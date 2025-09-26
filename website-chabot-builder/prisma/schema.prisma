@@ -1,0 +1,52 @@
+//Okay so this is our schema.prisma file right here which we are going to be using .. for 
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+//For every chatbot that the user creates ... he or she has to pay atleast 10 dollars a month .. so its not really a plan that they are buying buts its a chatbot.
+//Some cron jobs that would be required  
+model Users{
+  id String @default(auto()) @id @map("_id") @db.ObjectId
+  name String
+  email String @unique
+  image String
+  planExpires DateTime
+  Chatbots Chatbots[]
+  removeWaterMark Boolean @default(false)
+  planId String? @db.ObjectId
+  plan PricingPlans? @relation(fields: [planId], references: [planId])
+}
+
+enum Progress {
+  inProgress
+  Successful
+  Unsucessful
+}
+
+model Chatbots{
+  chatbotId String @id @default(auto()) @map("_id") @db.ObjectId
+  PUBLIC_API_KEY String 
+  DOMAINS String []
+  userId String @db.ObjectId
+  user Users @relation(fields: [userId], references: [id])
+  websiteURL String
+  status Progress
+  crawlResponse Json
+}
+
+
+model PricingPlans{
+  planId String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+  Monthlycost Int 
+  linkLimit Int
+  documentLimit Int
+  messageLimit Int
+  users Users[]
+}

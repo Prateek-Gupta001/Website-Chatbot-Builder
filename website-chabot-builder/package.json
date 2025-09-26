@@ -1,0 +1,38 @@
+{
+  "name": "website-chabot-builder",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.7.0",
+    "@mendable/firecrawl-js": "^1.29.2",
+    "@prisma/client": "^6.16.2",
+    "@qdrant/js-client-rest": "^1.15.0",
+    "@upstash/redis": "^1.35.4",
+    "axios": "^1.12.2",
+    "ioredis": "^5.7.0",
+    "next": "15.4.4",
+    "next-auth": "^4.24.11",
+    "prisma": "^6.16.2",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "redis": "^5.8.2",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.4.4",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
