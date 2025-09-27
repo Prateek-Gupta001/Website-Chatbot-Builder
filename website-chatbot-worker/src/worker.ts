@@ -17,8 +17,7 @@ import cliProgress from 'cli-progress';
 import "./utils/IntialiseExtractor"
 import uploadToQdrant from "./utils/uploadToQdrant";
 import prisma from "./db/prisma";
-import { Progress } from "./generated/prisma";
-
+import { Progress } from "@prisma/client";
 dotenv.config();
 
 // interface FullCrawlResult {
@@ -36,7 +35,7 @@ dotenv.config();
 let i = 0
 async function startWorker()
 {
-        while(i==0)
+        while(true)
         {    //Put this in an while true loop!  
             try{
                 const content = await redis.brpop("jobs", 0)
@@ -48,7 +47,7 @@ async function startWorker()
                 const jsonContent = JSON.parse(content[1])
                 let FullcrawlResponse : any = jsonContent.crawlResponse
                 const publicApiKey : string = jsonContent.PUBLIC_API_KEY
-                const chatbotId = jsonContent.chatBotId
+                const chatbotId = jsonContent.chatbotId
                 console.log("crawlResponse recieved whose type is ", typeof(FullcrawlResponse))
                 //Step 1: Clean the fucking data. 
                 const crawlResponse = FullcrawlResponse.data
@@ -73,10 +72,12 @@ async function startWorker()
 
                 const embeddingsJsonString = JSON.stringify(embeddedTextChunks, null, 2); // The null, 2 makes the JSON pretty
                 fs.writeFileSync("embeddings.txt", embeddingsJsonString, "utf-8");
+                console.log("Embedding Creation Successful!")
                 
                 //Step 4: Upload embeddings ... to qdrant.
                 //Should you just store all the things that are high compute .. on the disk?
                 //mmmm.... for a short while maybe .. but ..not right now man .. let's just first get this thing started man!
+                console.log("Beginning uploading to qdrant!")
                 const res = await uploadToQdrant(textChunks, embeddedTextChunks, publicApiKey)
                 if(res.status == false)
                 {
@@ -92,7 +93,6 @@ async function startWorker()
                         status: Progress.Successful
                     }}
                 )
-                i = 1;            
             }catch(err)
             {
                 console.log("The worker got into an error while trying to process! ", err)

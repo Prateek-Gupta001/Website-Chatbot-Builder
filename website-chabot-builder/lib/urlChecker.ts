@@ -5,7 +5,7 @@ export default  async function checkURL(url: string)
 {
     try{
         new URL(url)
-        await axios.head(url, {timeout: 5000});
+        await axios.head(url, {timeout: 7000});
         return true
     }catch(err: any)
     {

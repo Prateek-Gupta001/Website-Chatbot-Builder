@@ -34,12 +34,12 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-// lib/prisma.ts
-const prisma_1 = require("../generated/prisma");
+// db/prisma.ts
+const client_1 = require("@prisma/client");
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 const globalForPrisma = globalThis;
-const prisma = (_a = globalForPrisma.prisma) !== null && _a !== void 0 ? _a : new prisma_1.PrismaClient({
+const prisma = (_a = globalForPrisma.prisma) !== null && _a !== void 0 ? _a : new client_1.PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
 });
 if (process.env.NODE_ENV !== 'production') {

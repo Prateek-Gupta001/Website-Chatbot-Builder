@@ -24,7 +24,6 @@ function CreateChunks(cleanedText) {
             return e.pageContent;
         });
         console.log("Length of textChunks ", textChunks.length);
-        console.log("textchunks ", textChunks);
         return textChunks;
     });
 }

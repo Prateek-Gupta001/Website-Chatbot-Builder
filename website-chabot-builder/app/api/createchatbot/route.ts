@@ -68,13 +68,17 @@ export async function POST(req: NextRequest, res: Response)
     //wesbite_url and limit then you can just give that result to him/her. 
     //But that will rarely happen in production and for testing right now ... you can just skip this step and get a result form the output.json file
     //right there. 
-    crawlResponse = await app.crawlUrl(website_url, {
-    limit: limit,
-    allowBackwardLinks: true,
-    scrapeOptions: {
-        formats: ['markdown']
-    }
-    })
+    // crawlResponse = await app.crawlUrl(website_url, {
+    // limit: limit,
+    // allowBackwardLinks: true,
+    // scrapeOptions: {
+    //     formats: ['markdown']
+    // }
+    // })
+    const filePath = path.join(process.cwd(), "lib", "output.json");
+    const fileContent = fs.readFileSync(filePath, "utf-8");
+    crawlResponse = JSON.parse(fileContent); 
+
     console.log("Crawling Process Completed! ")
     }catch(err)
     {
@@ -86,12 +90,12 @@ export async function POST(req: NextRequest, res: Response)
         status: 500
     })
     }
-    if (!crawlResponse.success) {
-        console.log(`Failed to crawl: ${crawlResponse.error}`)
-        return NextResponse.json({
-        msg: "Failed to crawl"
-        })
-    }
+    // if (!crawlResponse.success) {
+    //     console.log(`Failed to crawl: ${crawlResponse.error}`)
+    //     return NextResponse.json({
+    //     msg: "Failed to crawl"
+    //     })
+    // }
 
 
     try{
@@ -109,13 +113,14 @@ export async function POST(req: NextRequest, res: Response)
             }
         })
         console.log("Made the entry in Mongo!")
-        const chatBotId = res.chatbotId
+        const chatbotId = res.chatbotId
+        console.log("chatbotId ", chatbotId)
         //PUSH THE JOB TO REDIS!... 
         await redis.lpush("jobs", JSON.stringify({
             crawlResponse,
-            publicApiKey,
+            PUBLIC_API_KEY: publicApiKey,
             userId,
-            chatBotId //It needs the chatbotId for updating the entry in the database. 
+            chatbotId //It needs the chatbotId for updating the entry in the database. 
         }))
         console.log("Made the entry to Redis!")
         //This will then be picked up the worker!

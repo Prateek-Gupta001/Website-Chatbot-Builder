@@ -52,11 +52,17 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const removeBigWords_1 = __importDefault(require("./utils/removeBigWords"));
+const cleanSpecialChars_1 = __importDefault(require("./utils/cleanSpecialChars"));
+const redis_1 = __importDefault(require("./db/redis"));
 const fs_1 = __importDefault(require("fs"));
 const dotenv = __importStar(require("dotenv"));
 const createChunks_1 = __importDefault(require("./utils/createChunks"));
 const createEmbeddings_1 = __importDefault(require("./utils/createEmbeddings"));
 require("./utils/IntialiseExtractor");
+const uploadToQdrant_1 = __importDefault(require("./utils/uploadToQdrant"));
+const prisma_1 = __importDefault(require("./db/prisma"));
+const client_1 = require("@prisma/client");
 dotenv.config();
 // interface FullCrawlResult {
 //   success: boolean;
@@ -72,26 +78,26 @@ dotenv.config();
 let i = 0;
 function startWorker() {
     return __awaiter(this, void 0, void 0, function* () {
-        while (i == 0) { //Put this in an while true loop!  
+        while (true) { //Put this in an while true loop!  
             try {
-                // const content = await redis.brpop("jobs", 0)
-                // if(!content)
-                // {
-                //     return 
-                // }
-                // console.log("We got some content from redis bruh! ", content[0])
-                // const jsonContent = JSON.parse(content[1])
-                // let FullcrawlResponse : any = jsonContent.crawlResponse
-                // console.log("crawlResponse recieved whose type is ", typeof(FullcrawlResponse))
-                // //Step 1: Clean the fucking data. 
-                // const crawlResponse = FullcrawlResponse.data
-                // const cleanMarkdownDataArray = crawlResponse.map((e:any)=>{
-                //     return e.markdown
-                // })
-                // const allMarkdownText = cleanMarkdownDataArray.join(" ");
-                // let cleanText = cleanSpecialChars(removeBigWordsandURLs(allMarkdownText))
-                // fs.writeFileSync("output.txt", cleanText, "utf-8");
-                let cleanText = fs_1.default.readFileSync("output.txt", "utf-8");
+                const content = yield redis_1.default.brpop("jobs", 0);
+                if (!content) {
+                    return;
+                }
+                console.log("We got some content from redis bruh! ", content[0]);
+                const jsonContent = JSON.parse(content[1]);
+                let FullcrawlResponse = jsonContent.crawlResponse;
+                const publicApiKey = jsonContent.PUBLIC_API_KEY;
+                const chatbotId = jsonContent.chatbotId;
+                console.log("crawlResponse recieved whose type is ", typeof (FullcrawlResponse));
+                //Step 1: Clean the fucking data. 
+                const crawlResponse = FullcrawlResponse.data;
+                const cleanMarkdownDataArray = crawlResponse.map((e) => {
+                    return e.markdown;
+                });
+                const allMarkdownText = cleanMarkdownDataArray.join(" ");
+                let cleanText = (0, cleanSpecialChars_1.default)((0, removeBigWords_1.default)(allMarkdownText));
+                fs_1.default.writeFileSync("output.txt", cleanText, "utf-8");
                 //Step 2: Create chunks!
                 const textChunks = yield (0, createChunks_1.default)(cleanText);
                 //Step 3: Create embeddings.
@@ -102,9 +108,24 @@ function startWorker() {
                 const embeddedTextChunks = yield Promise.all(embeddedTextChunksPromises);
                 const embeddingsJsonString = JSON.stringify(embeddedTextChunks, null, 2); // The null, 2 makes the JSON pretty
                 fs_1.default.writeFileSync("embeddings.txt", embeddingsJsonString, "utf-8");
+                console.log("Embedding Creation Successful!");
                 //Step 4: Upload embeddings ... to qdrant.
+                //Should you just store all the things that are high compute .. on the disk?
+                //mmmm.... for a short while maybe .. but ..not right now man .. let's just first get this thing started man!
+                console.log("Beginning uploading to qdrant!");
+                const res = yield (0, uploadToQdrant_1.default)(textChunks, embeddedTextChunks, publicApiKey);
+                if (res.status == false) {
+                    return false;
+                }
                 //Step 5: Update the database entry for chatbot.
-                i = 1;
+                yield prisma_1.default.chatbots.update({
+                    where: {
+                        chatbotId: chatbotId
+                    },
+                    data: {
+                        status: client_1.Progress.Successful
+                    }
+                });
             }
             catch (err) {
                 console.log("The worker got into an error while trying to process! ", err);

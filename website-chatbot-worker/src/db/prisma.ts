@@ -1,5 +1,5 @@
-// lib/prisma.ts
-import { PrismaClient } from "../generated/prisma";
+// db/prisma.ts
+import { PrismaClient } from '@prisma/client';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
