@@ -71,7 +71,6 @@ export default async function uploadToQdrant(chunks: string[],embeddings: any, p
         }
     }
 
-    // qdrantClient.upsert()
 
 }
 

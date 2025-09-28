@@ -1,4 +1,8 @@
-//Okay so this is our schema.prisma file right here which we are going to be using .. for 
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
   provider = "prisma-client-js"
@@ -9,8 +13,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-//For every chatbot that the user creates ... he or she has to pay atleast 10 dollars a month .. so its not really a plan that they are buying buts its a chatbot.
-//Some cron jobs that would be required  
+
 model Users{
   id String @default(auto()) @id @map("_id") @db.ObjectId
   name String
@@ -49,6 +52,7 @@ model Conversations{
   messages Json
 }
 
+
 model PricingPlans{
   planId String @id @default(auto()) @map("_id") @db.ObjectId
   name String
@@ -58,3 +62,6 @@ model PricingPlans{
   messageLimit Int
   users Users[]
 }
+
+
+

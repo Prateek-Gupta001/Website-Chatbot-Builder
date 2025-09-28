@@ -5,7 +5,7 @@
 
 export default async function generateEmbeddings(input_text : string)
 {
-    const extractor = await global.extractor
+    const extractor = await global.extractorPromise
     let output;
     try{
         output = await extractor(input_text, { pooling: 'mean', normalize: true });

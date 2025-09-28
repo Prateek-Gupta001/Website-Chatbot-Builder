@@ -24,6 +24,7 @@ model Users{
   removeWaterMark Boolean @default(false)
   planId String? @db.ObjectId
   plan PricingPlans? @relation(fields: [planId], references: [planId])
+  messages Int @default(0)
 }
 
 enum Progress {
@@ -34,13 +35,21 @@ enum Progress {
 
 model Chatbots{
   chatbotId String @id @default(auto()) @map("_id") @db.ObjectId
-  PUBLIC_API_KEY String 
+  PUBLIC_API_KEY String @unique
   DOMAINS String []
   userId String @db.ObjectId
   user Users @relation(fields: [userId], references: [id])
   websiteURL String
   status Progress
   crawlResponse Json
+  conversation Conversations[]
+}
+
+model Conversations{
+  conversationId String @id @default(auto()) @map("_id") @db.ObjectId
+  chatbotId String @db.ObjectId
+  Chatbot Chatbots @relation(fields: [chatbotId], references: [chatbotId])
+  messages Json
 }
 
 
