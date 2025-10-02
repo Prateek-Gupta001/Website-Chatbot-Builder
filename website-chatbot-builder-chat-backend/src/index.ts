@@ -11,15 +11,16 @@ import cors from "cors";
 import { Request } from "express";
 import { Response } from "express";
 import prisma from "./db/prisma";
+import { Prisma } from "@prisma/client";
 import classifyUserQuery from "./utils/classifier";
 import type { ModelMessage } from "ai";
 import createQueryEmbedding from "./utils/createQueryEmbedding";
 import retrieveRelevantChunks from "./utils/retrieveRelevantChunks";
 import LLMCall from "./utils/llmCall";
+import "./utils/intialiseExtractor"
 
 const app = express()
 app.use(cors())
-
 
 
 app.use(express.json())
@@ -36,7 +37,7 @@ app.post("/chat", async function(req: Request, res: Response){
     const headerValue = Array.isArray(authorizationHeader) ? authorizationHeader[0] : authorizationHeader
     const PUBLIC_API_KEY = headerValue.split(' ')[1]; 
     let messages : ModelMessage[] = body.messages
-    //If messages list is just the user message i.e its length is 1.
+
     //Then create a new conversation Id and then send that messageId to the backend for creating a conversation to be stored in the db.
 
     if(messages[-1].role != "user")
@@ -53,7 +54,9 @@ app.post("/chat", async function(req: Request, res: Response){
         },
         select:{
             DOMAINS: true,
-            user: true
+            user: true,
+            chatbotId: true,
+            systemPrompt: true
         }
     })
     if(!record?.DOMAINS)
@@ -70,6 +73,35 @@ app.post("/chat", async function(req: Request, res: Response){
     }
     //Check if the request came from the whitelisted domain or not. 
     const userId = record.user.id
+    let conversationId = body.conversationId //If this is undefined .. i.e the frontend didn't send one back then you will have create one here .. and 
+    //that is only going to happen if a new conversation was made .. the UI .. once the response is sent from the backend will store the conversation id inside a state variable 
+    //that its then going to use for further axios.post requests. 
+    //THIS IS GOING TO BE THE KEY FOR MANAGING THE CONVERSATION FLOW/STATE (STATE MEANING THE HISTORY HERE!).
+    //If messages list is just the user message i.e its length is 1.
+    if(messages.length == 1 && messages[0].role == "user" && !conversationId)
+    {
+        //THIS IS THE FIRST MESSAGE FOR A CONVERSATION! CREATE A MESSAGE ID AND STORE IT IN MONGO DB.
+        console.log("Creating a new conversation!")
+        let conversationRecord = await prisma.conversations.create({
+            data:{
+                chatbotId: record.chatbotId,
+                messages: messages as unknown as Prisma.InputJsonValue
+            }
+        })
+        conversationId = conversationRecord.conversationId
+    }
+    //This is going to be the key for keeping the messages/conversations up to date.
+    //You know this needs to be like fully up to date.
+    //So even if something goes wrong after this .. and the assistant's response is not there then you can still have the conversation stored there!
+    await prisma.conversations.update({
+        where:{
+            conversationId: conversationId
+        },
+        data:{
+            messages: messages as unknown as Prisma.InputJsonValue
+        }
+    })
+
     const domain = req.hostname;
     const domainCheck = record.DOMAINS.includes(domain)
     if(!domainCheck)
@@ -118,7 +150,7 @@ app.post("/chat", async function(req: Request, res: Response){
 
     //We will be using the AI SDK by vercel right here for making calls to the LLM. 
     const userIntialQuery = messages[-1].content 
-    const relevantContext = relevantTextChunks.join(" ")
+    const relevantContext = relevantTextChunks.join("\n")
     messages[-1].content = `You have been given some text which might or might now contain relevant information about the user query.
     Do your best to answer the user query based on the text provided to you:
     ##Relevant Context:
@@ -127,33 +159,34 @@ app.post("/chat", async function(req: Request, res: Response){
     #User query:
     ${userIntialQuery}
     `
-    
-
 
     //All the tests passed! Now proceed with the LLM Call. 
     //Append the relevant text chunks to the user messages. 
-    const textStream = await LLMCall(messages, userId)
+    const textStream = await LLMCall(messages, userId, record.systemPrompt)
+
+    //Stream the textual response to the frontend.
+    textStream.pipeUIMessageStreamToResponse(res)
 
     const finalResponse = await textStream.text;
     messages.concat({
         role:"assistant",
-        content: finalResponse
+        content: finalResponse,
     })
-    
-    //append this to the messages variable right there and store in the mongo db chat.
-
-
-    //We can have something like a tool call .. in which when the LLM has enough info .. or wants to get enough info .. he or she .. 
-
-    //The code snippet that you will send to the user .. can be framework dependent as well ... meaning if you're using NextJs ..then you should use
-    //the features of next js if you can for getting the session and all. 
-
+    console.log("Adding messages to the conversation... conversationId ", conversationId)
+    await prisma.conversations.update({
+        where:{
+            conversationId: conversationId
+        },
+        data:{
+            messages: messages as unknown as Prisma.InputJsonValue
+    }
+    })
 
 })
 
 
-app.listen(3000, ()=>{
-    console.log("The app is running right now!")
+app.listen(3001, ()=>{
+    console.log("The app is running right now at port 3000!")
 })
 
 
@@ -168,3 +201,15 @@ app.listen(3000, ()=>{
 //LET'S AIM FOR 20 WEBSITES. .... IF I GET 20 WEBSITES THEN I WILL BE LIKE HAVING SOME DECENT FUCKING INCOME. 
 
 
+//Okay now what all is remaining in this application:
+//1. The emebed.js script .. that is the main frontend script that people are going to be having in their application.
+//   Mainly I think I am going to be focusing on next js and react projects only .. and I think that's gonna be okay.
+//2. The frontend for the admin backend that is there .. its gotta be really neat and clean with good UI so that people think its legit. 
+//3. You gotta get the chatbot on the admin frontend as well to chat and stuff and also there in the emebd.js script.
+
+//Okay so maybe I can just build the frontend for the admin frontend first. 
+//That way we would be able to do use the chat thing to ..
+//So the things that are remaining are:
+// 1. Admin Frontend.
+// 2. Chat Frontend (to be distributed to the users.)
+// 3. Payment system (for intialising the plans and the limits and so on)

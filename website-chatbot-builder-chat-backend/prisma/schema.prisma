@@ -24,7 +24,7 @@ model Users{
   removeWaterMark Boolean @default(false)
   planId String? @db.ObjectId
   plan PricingPlans? @relation(fields: [planId], references: [planId])
-  messages Int @default(0)
+  messagesLimit Int @default(0)
 }
 
 enum Progress {
@@ -43,6 +43,7 @@ model Chatbots{
   status Progress
   crawlResponse Json
   conversation Conversations[]
+  systemPrompt String @default("You are a friendly and helpful assistant. I will provide you with a context and a question. Your job is to answer the question based only on the context provided. \n If the information to answer the question is in the context, please provide a clear and concise answer. \n If the context doesn't have the information needed, just say something like, 'I couldn't find the answer to your question in the documents I have. Please do not try to guess or use any outside information. ")
 }
 
 model Conversations{

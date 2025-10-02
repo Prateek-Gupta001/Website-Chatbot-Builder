@@ -9,6 +9,6 @@ export default async function createQueryEmbedding(query: string)
             normalize: true
         }
     )
-    return Array.from(queryEmebdding)
+    return Array.from(queryEmebdding.data)
 }
 

@@ -13,7 +13,6 @@ import fs from "fs"
 import * as dotenv from 'dotenv';
 import CreateChunks from "./utils/createChunks";
 import generateEmbeddings from "./utils/createEmbeddings";
-import cliProgress from 'cli-progress';
 import "./utils/IntialiseExtractor"
 import uploadToQdrant from "./utils/uploadToQdrant";
 import prisma from "./db/prisma";
@@ -32,11 +31,12 @@ dotenv.config();
 // }
 
 //NOTE: I am using any as the types here because firecrawl.dev doesn't provide the right types!!!
-let i = 0
+
 async function startWorker()
 {
         while(true)
-        {    //Put this in an while true loop!  
+        {    //Put this in an while true loop! 
+            let chatbotId 
             try{
                 const content = await redis.brpop("jobs", 0)
                 if(!content)
@@ -47,7 +47,7 @@ async function startWorker()
                 const jsonContent = JSON.parse(content[1])
                 let FullcrawlResponse : any = jsonContent.crawlResponse
                 const publicApiKey : string = jsonContent.PUBLIC_API_KEY
-                const chatbotId = jsonContent.chatbotId
+                chatbotId = jsonContent.chatbotId
                 console.log("crawlResponse recieved whose type is ", typeof(FullcrawlResponse))
                 //Step 1: Clean the fucking data. 
                 const crawlResponse = FullcrawlResponse.data
@@ -95,6 +95,14 @@ async function startWorker()
                 )
             }catch(err)
             {
+                await prisma.chatbots.update({
+                    where:{
+                        chatbotId: chatbotId
+                    },
+                    data:{
+                        status: Progress.Unsucessful
+                    }}
+                )
                 console.log("The worker got into an error while trying to process! ", err)
             }
     }

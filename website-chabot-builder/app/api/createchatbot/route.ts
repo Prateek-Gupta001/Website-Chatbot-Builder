@@ -97,7 +97,8 @@ export async function POST(req: NextRequest, res: Response)
     //     })
     // }
 
-
+    let chatbotId;
+    const defaultDomain = "websitechatbotbuilder.com" //This is for sending the requests via the admin backend for trial of the chatbot by the user!
     try{
         //also create an object in mongo with unique id scraping id in mongo which will later be updated 
         //and also check if it already exists inside the mongo object or not ... but what if one person wants too .. and they have already spent the money .. but anway. 
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest, res: Response)
         const res = await prisma.chatbots.create({
             data:{
                 userId, 
-                DOMAINS: domains,
+                DOMAINS: [defaultDomain, ...domains],
                 PUBLIC_API_KEY: publicApiKey,
                 websiteURL: website_url,
                 status: Progress.inProgress,
@@ -113,7 +114,7 @@ export async function POST(req: NextRequest, res: Response)
             }
         })
         console.log("Made the entry in Mongo!")
-        const chatbotId = res.chatbotId
+        chatbotId = res.chatbotId
         console.log("chatbotId ", chatbotId)
         //PUSH THE JOB TO REDIS!... 
         await redis.lpush("jobs", JSON.stringify({
@@ -130,7 +131,8 @@ export async function POST(req: NextRequest, res: Response)
         console.log("err ", err)
     }
     return Response.json({
-        msg:"Website Creation Process has been started!"
+        msg:"Website Creation Process has been started!",
+        chatbotId: chatbotId
     },
     {
         status:200
@@ -142,24 +144,11 @@ export async function POST(req: NextRequest, res: Response)
     //about is the chatbot ready is the chatbot ready .... and when it is .. the backend will send the right request .. i.e the confirmation. 
     //It will basically send the code snippet there for how to place the chatbot on your website...
     //Now we need to write the basic function for how we would go about placing those embeddings .. after creating them into the qdrant database. 
-
-    //Okay so here is what we are going to do:
-    //1. Clean the Data.
-    //2. Create chunks for it. 
-    //3. Upsert those chunks into qdrant. 
+ 
 }
 
 
 
-
-
-// try {
-//     const result = await client.getCollections();
-//     console.log('List of collections:', result.collections);
-// }catch(err) 
-// {
-//     console.error('Could not get collections:', err);
-// }
 
 
 //My personal loggings:

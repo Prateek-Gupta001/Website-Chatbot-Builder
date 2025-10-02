@@ -1,0 +1,1 @@
+{"root":["./src/index.ts","./src/db/prisma.ts","./src/db/qdrant.ts","./src/utils/classifier.ts","./src/utils/createqueryembedding.ts","./src/utils/intialiseextractor.ts","./src/utils/llmcall.ts","./src/utils/retrieverelevantchunks.ts"],"version":"5.8.3"}

@@ -4,7 +4,7 @@ import { ModelMessage, streamText } from "ai";
 import prisma from "../db/prisma";
 import { google } from "@ai-sdk/google";
 
-export default async function LLMCall(messages: ModelMessage[], userId: string)
+export default async function LLMCall(messages: ModelMessage[], userId: string, systemPrompt : string)
 {
     await prisma.users.update({
         where:{
@@ -18,10 +18,8 @@ export default async function LLMCall(messages: ModelMessage[], userId: string)
     })
     const result = await streamText({
         model: google("gemini-2.5-pro"),
-        system: `You are an expert AI assistant that`,
+        system: systemPrompt,
         messages: messages
     })
     return result
-    
-
 }
