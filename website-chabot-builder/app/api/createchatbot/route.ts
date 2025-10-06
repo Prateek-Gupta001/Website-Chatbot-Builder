@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import FirecrawlApp, { CrawlParams, CrawlStatusResponse } from '@mendable/firecrawl-js';
-import { pipeline } from '@huggingface/transformers';
 import checkURL from "@/lib/urlChecker";
 import fs from "fs";
 import path from "path";
@@ -98,7 +97,7 @@ export async function POST(req: NextRequest, res: Response)
     // }
 
     let chatbotId;
-    const defaultDomain = "websitechatbotbuilder.com" //This is for sending the requests via the admin backend for trial of the chatbot by the user!
+    const defaultDomain = ["websitechatbotbuilder.com"] //This is for sending the requests via the admin backend for trial of the chatbot by the user!
     try{
         //also create an object in mongo with unique id scraping id in mongo which will later be updated 
         //and also check if it already exists inside the mongo object or not ... but what if one person wants too .. and they have already spent the money .. but anway. 

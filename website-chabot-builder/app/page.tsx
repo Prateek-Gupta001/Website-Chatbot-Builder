@@ -5,7 +5,8 @@ export default function Home() {
     console.log("session ", session)
   return (
     <div>
-      Hey there
+      This is going to be the landing page for this!
     </div>
   );
 }
+

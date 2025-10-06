@@ -35,7 +35,7 @@ export const authOptions: NextAuthOptions = {
               image: user.image || "",
               email: user.email,
               planExpires:  new Date("2035-09-23T10:00:00.000Z"),
-              planId: "68d133410e9701485aafc6c0"
+              planId: "68d133410e9701485aafc6c0",
             }
           })
           // get the record and store it in the id.. i.e the session itself. 
