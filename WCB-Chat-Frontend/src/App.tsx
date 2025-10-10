@@ -40,7 +40,8 @@ function App() {
       {/* Chat Widget - Fixed position */}
       <div className="fixed bottom-5 right-5 z-[999999]">
         <ChatWidget config={{
-          apiUrl: 'http://localhost:3000/api',
+          apiUrl: 'http://localhost:3001',
+          PUBLIC_API_KEY: "e4c3642c37cab8b69c57d94f1554cdd495dad9a36adcdf419739f7d2006cec5a",
           widgetId: 'dev-widget-123'
         }} />
       </div>

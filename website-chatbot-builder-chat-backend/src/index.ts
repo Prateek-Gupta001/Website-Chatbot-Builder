@@ -6,14 +6,16 @@
 //The plan field .. and the planExpires field can only renew after a payment or something. 
 //This file will require the use of mongo db and qdrant
 
-import express, { text } from "express"
+import express from "express"
+import { Readable } from 'node:stream';
 import cors from "cors";
 import { Request } from "express";
 import { Response } from "express";
 import prisma from "./db/prisma";
 import { Prisma } from "@prisma/client";
 import classifyUserQuery from "./utils/classifier";
-import type { ModelMessage } from "ai";
+import { convertToModelMessages, type ModelMessage } from "ai";
+import { createUIMessageStream, pipeUIMessageStreamToResponse, streamText} from "ai";
 import createQueryEmbedding from "./utils/createQueryEmbedding";
 import retrieveRelevantChunks from "./utils/retrieveRelevantChunks";
 import LLMCall from "./utils/llmCall";
@@ -27,7 +29,9 @@ app.use(express.json())
 
 app.post("/chat", async function(req: Request, res: Response){
     const body = req.body
+
     const authorizationHeader = req.headers["authorization"]
+    console.log("the body that we are getting here is ", body)
     if(!authorizationHeader)
     {
         return res.status(401).json({
@@ -36,7 +40,9 @@ app.post("/chat", async function(req: Request, res: Response){
     }
     const headerValue = Array.isArray(authorizationHeader) ? authorizationHeader[0] : authorizationHeader
     const PUBLIC_API_KEY = headerValue.split(' ')[1]; 
-    let messages : ModelMessage[] = body.messages
+    let messages = body.messages
+    //First we gotta convert the UI messages to model messages!
+    messages = convertToModelMessages(messages)
 
     //Then create a new conversation Id and then send that messageId to the backend for creating a conversation to be stored in the db.
     console.log("messages are  ", messages)
@@ -50,6 +56,12 @@ app.post("/chat", async function(req: Request, res: Response){
     }
     const someUserInformation = body.someUserInformation //This will come from the frontend itself .. someway to identify the user .. so that we can store the chats in
     console.log("The public api key here is ", PUBLIC_API_KEY)
+    if(!PUBLIC_API_KEY)
+    {
+        return res.status(403).json({
+            err: "PUBLIC_API_KEY required!"
+        })
+    }
     //in some personal manner for the user!
     const record = await prisma.chatbots.findUnique({
         where:{
@@ -76,31 +88,18 @@ app.post("/chat", async function(req: Request, res: Response){
     }
     //Check if the request came from the whitelisted domain or not. 
     const userId = record.user.id
-    let conversationId = body.conversationId || null //If this is undefined .. i.e the frontend didn't send one back then you will have create one here .. and 
-    //that is only going to happen if a new conversation was made .. the UI .. once the response is sent from the backend will store the conversation id inside a state variable 
-    //that its then going to use for further axios.post requests. 
-    //THIS IS GOING TO BE THE KEY FOR MANAGING THE CONVERSATION FLOW/STATE (STATE MEANING THE HISTORY HERE!).
-    //If messages list is just the user message i.e its length is 1.
-    if(messages.length === 1 && messages[0].role === "user" && !conversationId)
-    {
-        //THIS IS THE FIRST MESSAGE FOR A CONVERSATION! CREATE A MESSAGE ID AND STORE IT IN MONGO DB.
-        console.log("Creating a new conversation!")
-        let conversationRecord = await prisma.conversations.create({
-            data:{
-                chatbotId: record.chatbotId,
-                messages: messages as unknown as Prisma.InputJsonValue
-            }
-        })
-        conversationId = conversationRecord.conversationId
-    }
-    //This is going to be the key for keeping the messages/conversations up to date.
-    //You know this needs to be like fully up to date.
-    //So even if something goes wrong after this .. and the assistant's response is not there then you can still have the conversation stored there!
-    await prisma.conversations.update({
+    let conversationId = body.id 
+    console.log("conversationId ", conversationId)
+    await prisma.conversations.upsert({
         where:{
             conversationId: conversationId
         },
-        data:{
+        update:{
+            messages: messages as unknown as Prisma.InputJsonValue
+        },
+        create:{
+            conversationId, 
+            chatbotId: record.chatbotId,
             messages: messages as unknown as Prisma.InputJsonValue
         }
     })
@@ -144,10 +143,47 @@ app.post("/chat", async function(req: Request, res: Response){
     }
     if(!classification.startsWith("<RAG>"))
     {
-        //This is the simple user response to the user query.
-        return res.status(200).json({
-            response: classification
-        })
+        const stream = createUIMessageStream({
+            execute: async ({ writer }) => {
+                // 1. Send message start
+                writer.write({
+                    type: 'start',
+                    messageId: `msg-${Date.now()}`
+                });
+                
+                // 2. Send text-start
+                writer.write({
+                    type: 'text-start',
+                    id: 'text-0'
+                });
+                
+                // 3. Send text-delta with the actual content
+                writer.write({
+                    type: 'text-delta',
+                    id: 'text-0',
+                    delta: classification
+                });
+                
+                // 4. Send text-end
+                writer.write({
+                    type: 'text-end',
+                    id: 'text-0'
+                });
+                
+                // 5. Send finish
+                writer.write({
+                    type: 'finish'
+                });
+            }
+        });
+        
+        // Pipe the stream to the response - this works with useChat on frontend
+        return pipeUIMessageStreamToResponse({
+            response: res,
+            stream: stream,
+            status: 200
+        });
+
     }
     const queryToBeEmbedded = classification.match(/<RAG>\s*([\s\S]*?)\s*<\/RAG>/)
     if(!queryToBeEmbedded)
@@ -163,9 +199,11 @@ app.post("/chat", async function(req: Request, res: Response){
     
 
     //We will be using the AI SDK by vercel right here for making calls to the LLM. 
-    const userIntialQuery = messages[messages.length -1].content 
-    //@
-    const relevantContext =relevantTextChunks.map(chunk => chunk?.text ?? "").join("\n");
+    const userIntialQuery = messages[messages.length -1].content
+    console.log("type of user query here is ", userIntialQuery)
+    const userQuery = userIntialQuery[0].text
+    console.log("The user query here is ", userQuery)
+    const relevantContext = relevantTextChunks.map(chunk => chunk?.text ?? "").join("\n");
 
     messages[messages.length -1].content = `You have been given some text which might or might now contain relevant information about the user query.
     Do your best to answer the user query based on the text provided to you:
@@ -173,7 +211,7 @@ app.post("/chat", async function(req: Request, res: Response){
     ${relevantContext}
 
     #User query:
-    ${userIntialQuery}
+    ${userQuery}
     `
     console.log("The new messages array being fed into the LLM Call is ", messages)
     console.log("The system prompt being passed to the LLM is ", record.systemPrompt)
@@ -183,10 +221,7 @@ app.post("/chat", async function(req: Request, res: Response){
     const textStream = await LLMCall(messages, userId, record.systemPrompt, conversationId)
 
     //Stream the textual response to the frontend.
-    if(conversationId)
-    {
-        res.setHeader('X-Conversation-Id', conversationId);
-    }
+
     textStream.pipeUIMessageStreamToResponse(res)
 })
 

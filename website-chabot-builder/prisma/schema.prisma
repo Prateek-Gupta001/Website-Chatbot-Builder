@@ -40,11 +40,12 @@ model Chatbots{
   status Progress
   crawlResponse Json
   conversation Conversations[]
-  systemPrompt String @default("You are a friendly and helpful assistant. I will provide you with a context and a question. Your job is to answer the question based only on the context provided. \n If the information to answer the question is in the context, please provide a clear and concise answer. \n If the context doesn't have the information needed, just say something like, 'I couldn't find the answer to your question in the documents I have. Please do not try to guess or use any outside information. ")
+  systemPrompt String @default("You are a friendly and helpful assistant. I will provide you with a context and a question. Your job is to answer the question based only on the context provided. \n If the information to answer the question is in the context, please provide a clear and concise answer. \n If the context doesn't have the information needed, just say something like, 'I couldn't find the answer to your question in the information that I have. Please do not try to guess or use any outside information. \n Don't show the user that you are answering based on some context answer like you know it all internally. Don't use phrases like 'Based on the documents' or 'Based on the context provided' ")
 }
 
+
 model Conversations{
-  conversationId String @id @default(auto()) @map("_id") @db.ObjectId
+  conversationId String @id @map("_id")
   chatbotId String @db.ObjectId
   Chatbot Chatbots @relation(fields: [chatbotId], references: [chatbotId])
   messages Json

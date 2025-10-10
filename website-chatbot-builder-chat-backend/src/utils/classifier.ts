@@ -12,7 +12,6 @@ import { google } from "@ai-sdk/google";
 export default async function classifyUserQuery(messages: ModelMessage[])
 {
     let response
-    try{    
         const { text } = await generateText({
             model: google("gemini-2.5-pro"),
             system: `You are an expert AI assistant that triages user queries for a business intelligence system. Your primary role is to determine if a query is conversational or if it requires retrieving specific information from a knowledge base.
@@ -73,13 +72,10 @@ export default async function classifyUserQuery(messages: ModelMessage[])
     `,
         messages: messages
         })
-        response = text
-    }catch(err)
-        {
-            console.log("Got this error while classfiyUserQuery ", err)
-        }
-    console.log("The classification result was the following " + response)
-    return response
+        
+    
+    console.log("The classification result was the following " + text)
+    return text
 }
 
 

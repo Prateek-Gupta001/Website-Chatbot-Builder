@@ -24,12 +24,14 @@ export default async function LLMCall(messages: ModelMessage[], userId: string, 
         messages: messages,
         async onFinish({text})
         {
-        messages.concat({
+        messages.push({
             role:"assistant",
             content: text,
         })
         console.log("Adding messages to the conversation... conversationId ", conversationId)
-        await prisma.conversations.update({
+        try{
+            console.log("storing these messages in mongo db ", messages)
+            await prisma.conversations.update({
             where:{
                 conversationId: conversationId
             },
@@ -37,6 +39,10 @@ export default async function LLMCall(messages: ModelMessage[], userId: string, 
                 messages: messages as unknown as Prisma.InputJsonValue
             }
         })
+        }catch(err)
+        {
+            console.log("Error ", err)
+        }
         }
     })
     return result
