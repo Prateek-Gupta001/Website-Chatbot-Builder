@@ -12,11 +12,9 @@ export default defineConfig({
       fileName: 'chat-widget',
       formats: ['iife']        // CRITICAL: Makes it work as window.ChatWidget
     },
-    rollupOptions: {
-      // Mark React as external? NO! We want to bundle it
+       rollupOptions: {
       output: {
-        // Inline all CSS into JS (easier) OR separate CSS file
-        inlineDynamicImports: true,
+        assetFileNames: 'chat-widget.[ext]' // This will create chat-widget.css
       }
     },
     // Ensure everything is bundled together

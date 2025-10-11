@@ -48,7 +48,7 @@ model Chatbots{
 
 model Conversations{
   conversationId String @id @map("_id")
-  chatbotId String @db.ObjectId
+  chatbotId String @db.ObjectId 
   Chatbot Chatbots @relation(fields: [chatbotId], references: [chatbotId])
   messages Json
 }
